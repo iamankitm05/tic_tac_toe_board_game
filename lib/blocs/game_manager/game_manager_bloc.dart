@@ -18,6 +18,7 @@ class GameManagerBloc extends Bloc<GameManagerEvent, GameManagerState> {
     on<LeaveRoomEvent>(_onLeaveRoom);
     on<RequestToPlayEvent>(_onRequestToPlay);
     on<AcceptPlayRequestEvent>(_onAcceptPlayRequest);
+    on<ClearStatusEvent>(_onClearStatus);
   }
 
   StreamSubscription<DocumentSnapshot>? _roomSubscription;
@@ -64,6 +65,8 @@ class GameManagerBloc extends Bloc<GameManagerEvent, GameManagerState> {
             if (snapshot.exists && snapshot.data() != null) {
               final roomData = Room.fromMap(snapshot.data()!);
               add(UpdateRoomStreamEvent(roomData));
+            } else {
+              add(const UpdateRoomStreamEvent(null));
             }
           });
 
@@ -115,6 +118,8 @@ class GameManagerBloc extends Bloc<GameManagerEvent, GameManagerState> {
         if (snapshot.exists && snapshot.data() != null) {
           final roomData = Room.fromMap(snapshot.data()!);
           add(UpdateRoomStreamEvent(roomData));
+        } else {
+          add(const UpdateRoomStreamEvent(null));
         }
       });
 
@@ -136,7 +141,11 @@ class GameManagerBloc extends Bloc<GameManagerEvent, GameManagerState> {
     UpdateRoomStreamEvent event,
     Emitter<GameManagerState> emit,
   ) {
-    emit(state.copyWith(room: event.room));
+    if (event.room == null) {
+      emit(state.copyWith(clearRoom: true));
+    } else {
+      emit(state.copyWith(room: event.room));
+    }
   }
 
   Future<void> _onMakeMove(
@@ -348,5 +357,12 @@ class GameManagerBloc extends Bloc<GameManagerEvent, GameManagerState> {
     }
 
     return {'winner': winner, 'player1Score': p1Score, 'player2Score': p2Score};
+  }
+
+  void _onClearStatus(
+    ClearStatusEvent event,
+    Emitter<GameManagerState> emit,
+  ) {
+    emit(state.copyWith());
   }
 }

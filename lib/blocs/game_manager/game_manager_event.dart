@@ -26,7 +26,7 @@ class JoinRoomEvent extends GameManagerEvent {
 
 class UpdateRoomStreamEvent extends GameManagerEvent {
   const UpdateRoomStreamEvent(this.room);
-  final Room room;
+  final Room? room;
 
   @override
   List<Object?> get props => [room];
@@ -46,6 +46,10 @@ class ResetRoundEvent extends GameManagerEvent {
 
 class LeaveRoomEvent extends GameManagerEvent {
   const LeaveRoomEvent();
+}
+
+class ClearStatusEvent extends GameManagerEvent {
+  const ClearStatusEvent();
 }
 
 class RequestToPlayEvent extends GameManagerEvent {

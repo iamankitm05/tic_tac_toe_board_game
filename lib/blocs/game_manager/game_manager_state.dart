@@ -28,6 +28,7 @@ final class GameManagerState extends Equatable {
     String? warning,
     String? info,
     Room? room,
+    bool clearRoom = false,
     String? currentPlayName,
     bool? isCreator,
   }) {
@@ -37,7 +38,7 @@ final class GameManagerState extends Equatable {
       success: success,
       warning: warning,
       info: info,
-      room: room ?? this.room,
+      room: clearRoom ? null : (room ?? this.room),
       currentPlayName: currentPlayName ?? this.currentPlayName,
       isCreator: isCreator ?? this.isCreator,
     );

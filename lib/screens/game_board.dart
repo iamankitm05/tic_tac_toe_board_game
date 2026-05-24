@@ -88,6 +88,55 @@ class _GameBoardState extends State<GameBoard> {
     });
   }
 
+  void _showExitConfirmationDialog(BuildContext context, GameManagerState state) {
+    final room = state.room;
+    final isHost = state.isCreator;
+    final isPlayer2 = room != null && room.guestName == state.currentPlayName;
+
+    String contentText;
+    if (isHost) {
+      contentText = "Are you sure you want to leave? As the Host, this will close the lobby and delete the room.";
+    } else if (isPlayer2) {
+      contentText = "Are you sure you want to leave? You will vacate the player slot and return to the main menu.";
+    } else {
+      contentText = "Are you sure you want to leave the lobby?";
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.cardBackground.withValues(alpha: 0.95),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            "Leave Lobby",
+            style: GoogleFonts.poppins(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            contentText,
+            style: GoogleFonts.poppins(color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text("CANCEL", style: GoogleFonts.poppins(color: Colors.white70)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.read<GameManagerBloc>().add(const LeaveRoomEvent());
+                Navigator.of(context).pop();
+              },
+              child: Text("LEAVE", style: GoogleFonts.poppins(color: AppColors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showGuestListBottomSheet(BuildContext context, Room room, GameManagerState state) {
     final myName = state.currentPlayName;
     final isAlreadyPlayer = room.creatorName == myName || room.guestName == myName;
@@ -234,14 +283,17 @@ class _GameBoardState extends State<GameBoard> {
 
         if (state.error != null) {
           MyToast.error(context, state.error!);
+          context.read<GameManagerBloc>().add(const ClearStatusEvent());
         }
 
         if (state.warning != null) {
           MyToast.warning(context, state.warning!);
+          context.read<GameManagerBloc>().add(const ClearStatusEvent());
         }
 
         if (state.info != null) {
           MyToast.info(context, state.info!);
+          context.read<GameManagerBloc>().add(const ClearStatusEvent());
         }
 
         // Show dialog to Host when someone requests to play (safeguarded against duplicate overlays)
@@ -262,43 +314,45 @@ class _GameBoardState extends State<GameBoard> {
           _lastShownRequester = null;
         }
       },
-      child: CustomScaffold(
-        child: BlocBuilder<GameManagerBloc, GameManagerState>(
-          builder: (context, state) {
-            final room = state.room;
-            if (room == null) {
-              return const Center(
-                child: CircularProgressIndicator(color: AppColors.creatorColor),
-              );
-            }
-
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 650;
-                return Column(
-                  children: [
-                    BoardHeader(
-                      room: room,
-                      state: state,
-                      onBack: () {
-                        context.read<GameManagerBloc>().add(const LeaveRoomEvent());
-                        Navigator.of(context).pop();
+      child: BlocBuilder<GameManagerBloc, GameManagerState>(
+        builder: (context, state) {
+          final room = state.room;
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) return;
+              _showExitConfirmationDialog(context, state);
+            },
+            child: CustomScaffold(
+              child: room == null
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.creatorColor),
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth > 650;
+                        return Column(
+                          children: [
+                            BoardHeader(
+                              room: room,
+                              state: state,
+                              onBack: () => _showExitConfirmationDialog(context, state),
+                              onCopy: () => _copyRoomCode(context, room.id),
+                              onOpenGuestList: () => _showGuestListBottomSheet(context, room, state),
+                            ),
+                            const Gap(20),
+                            Expanded(
+                              child: isWide
+                                  ? _buildWideLayout(context, room, state)
+                                  : _buildMobileLayout(context, room, state),
+                            ),
+                          ],
+                        );
                       },
-                      onCopy: () => _copyRoomCode(context, room.id),
-                      onOpenGuestList: () => _showGuestListBottomSheet(context, room, state),
                     ),
-                    const Gap(20),
-                    Expanded(
-                      child: isWide
-                          ? _buildWideLayout(context, room, state)
-                          : _buildMobileLayout(context, room, state),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -477,7 +531,7 @@ class BoardHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(Icons.logout_rounded, color: Colors.white70, size: 22),
           onPressed: onBack,
         ),
         GestureDetector(
@@ -551,7 +605,7 @@ class BoardHeader extends StatelessWidget {
   }
 }
 
-class WinnerOverlay extends StatelessWidget {
+class WinnerOverlay extends StatefulWidget {
   const WinnerOverlay({
     super.key,
     required this.room,
@@ -562,9 +616,49 @@ class WinnerOverlay extends StatelessWidget {
   final VoidCallback onPlayAgain;
 
   @override
+  State<WinnerOverlay> createState() => _WinnerOverlayState();
+}
+
+class _WinnerOverlayState extends State<WinnerOverlay> with TickerProviderStateMixin {
+  late AnimationController _entranceController;
+  late Animation<double> _scaleAnimation;
+
+  late AnimationController _pulseController;
+  late Animation<double> _pulseScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.elasticOut,
+    );
+    _entranceController.forward();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseScale = Tween<double>(begin: 0.92, end: 1.06).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDraw = room.winner == "Draw";
-    final isXWinner = room.winner == "X";
+    final isDraw = widget.room.winner == "Draw";
+    final isXWinner = widget.room.winner == "X";
     final themeColor = isDraw
         ? AppColors.amberAccent
         : (isXWinner ? AppColors.creatorColor : AppColors.guestColor);
@@ -573,73 +667,99 @@ class WinnerOverlay extends StatelessWidget {
     if (isDraw) {
       detailText = "Both players played well.";
     } else if (isXWinner) {
-      detailText = "${room.creatorName} wins this round!";
+      detailText = "${widget.room.creatorName} wins this round!";
     } else {
-      detailText = "${room.guestName ?? 'Guest'} wins this round!";
+      detailText = "${widget.room.guestName ?? 'Guest'} wins this round!";
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F0E26).withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: themeColor.withValues(alpha: 0.5),
+            width: 2.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: themeColor.withValues(alpha: 0.25),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: themeColor.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isDraw ? Icons.handshake_outlined : Icons.emoji_events_outlined,
-                  color: themeColor,
-                  size: 48,
+              // Floating particle sparks in background
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _WinnerParticlesPainter(themeColor: themeColor),
                 ),
               ),
-              const Gap(16),
-              Text(
-                isDraw ? "ROUND DRAW" : "VICTORY!",
-                style: GoogleFonts.poppins(
-                  color: themeColor,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 28,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const Gap(8),
-              Text(
-                detailText,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              const Gap(24),
-              ElevatedButton.icon(
-                onPressed: onPlayAgain,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 8,
-                  shadowColor: themeColor.withValues(alpha: 0.4),
-                ),
-                icon: const Icon(Icons.replay, fontWeight: FontWeight.bold),
-                label: Text(
-                  "PLAY AGAIN",
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Pulsing sprite representation
+                      ScaleTransition(
+                        scale: _pulseScale,
+                        child: _buildWinnerSprite(isDraw, isXWinner),
+                      ),
+                      const Gap(16),
+                      Text(
+                        isDraw ? "ROUND DRAW" : "VICTORY!",
+                        style: GoogleFonts.poppins(
+                          color: themeColor,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 26,
+                          letterSpacing: 1.5,
+                          shadows: [
+                            Shadow(
+                              color: themeColor.withValues(alpha: 0.5),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Gap(6),
+                      Text(
+                        detailText,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Gap(20),
+                      ElevatedButton.icon(
+                        onPressed: widget.onPlayAgain,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: themeColor,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 8,
+                          shadowColor: themeColor.withValues(alpha: 0.4),
+                        ),
+                        icon: const Icon(Icons.replay, fontWeight: FontWeight.bold),
+                        label: Text(
+                          "PLAY AGAIN",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -649,6 +769,83 @@ class WinnerOverlay extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildWinnerSprite(bool isDraw, bool isXWinner) {
+    if (isDraw) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(AppAssets.cross, width: 54, height: 54),
+          const Gap(12),
+          Image.asset(AppAssets.circle, width: 54, height: 54),
+        ],
+      );
+    } else {
+      final spriteColor = isXWinner ? AppColors.creatorColor : AppColors.guestColor;
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: spriteColor.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: spriteColor.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: spriteColor.withValues(alpha: 0.1),
+              blurRadius: 16,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Image.asset(
+          isXWinner ? AppAssets.cross : AppAssets.circle,
+          width: 72,
+          height: 72,
+        ),
+      );
+    }
+  }
+}
+
+class _WinnerParticlesPainter extends CustomPainter {
+  _WinnerParticlesPainter({required this.themeColor});
+  final Color themeColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = themeColor.withValues(alpha: 0.05)
+      ..style = PaintingStyle.fill;
+
+    // Draw some large background blur circles
+    canvas.drawCircle(Offset(size.width * 0.15, size.height * 0.2), 35, paint);
+    canvas.drawCircle(Offset(size.width * 0.85, size.height * 0.8), 45, paint);
+    canvas.drawCircle(Offset(size.width * 0.75, size.height * 0.25), 25, paint);
+    canvas.drawCircle(Offset(size.width * 0.2, size.height * 0.75), 30, paint);
+
+    // Draw some small sparkle stars
+    final starPaint = Paint()
+      ..color = themeColor.withValues(alpha: 0.2)
+      ..style = PaintingStyle.fill;
+
+    final List<Offset> stars = [
+      Offset(size.width * 0.1, size.height * 0.45),
+      Offset(size.width * 0.9, size.height * 0.35),
+      Offset(size.width * 0.35, size.height * 0.85),
+      Offset(size.width * 0.65, size.height * 0.15),
+      Offset(size.width * 0.8, size.height * 0.65),
+    ];
+
+    for (var pos in stars) {
+      canvas.drawCircle(pos, 2.5, starPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // Custom Board Render

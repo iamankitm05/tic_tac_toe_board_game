@@ -86,6 +86,7 @@ class _MenuScreenState extends State<MenuScreen>
         listener: (context, state) {
           if (state.error != null) {
             MyToast.error(context, state.error!);
+            context.read<GameManagerBloc>().add(const ClearStatusEvent());
           }
           if (state.success == 'room_created' || state.success == 'room_joined') {
             MyToast.success(
@@ -94,6 +95,7 @@ class _MenuScreenState extends State<MenuScreen>
                   ? "Lobby created successfully!"
                   : "Joined lobby successfully!",
             );
+            context.read<GameManagerBloc>().add(const ClearStatusEvent());
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => const GameBoard(),
@@ -509,7 +511,7 @@ class _WebApkDownloadButtonState extends State<WebApkDownloadButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           transform: _isHovered
-              ? (Matrix4.identity()..scale(1.04))
+              ? Matrix4.diagonal3Values(1.04, 1.04, 1.0)
               : Matrix4.identity(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
