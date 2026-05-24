@@ -1,3 +1,5 @@
+.firebase/
+
 # FVM Caches
 .fvm/
 .fvmrc

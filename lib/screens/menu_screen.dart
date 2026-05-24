@@ -58,7 +58,10 @@ class _MenuScreenState extends State<MenuScreen>
     if (!_isCreatingRoom) {
       final code = _roomCodeController.text.trim();
       if (code.isEmpty || code.length < 4) {
-        MyToast.warning(context, 'Please enter a valid room code (at least 4 characters)!');
+        MyToast.warning(
+          context,
+          'Please enter a valid room code (at least 4 characters)!',
+        );
         return;
       }
     }
@@ -67,16 +70,20 @@ class _MenuScreenState extends State<MenuScreen>
     if (_isCreatingRoom) {
       bloc.add(CreateRoomEvent(name));
     } else {
-      bloc.add(JoinRoomEvent(
-        guestName: name,
-        roomId: _roomCodeController.text.trim().toUpperCase(),
-      ));
+      bloc.add(
+        JoinRoomEvent(
+          guestName: name,
+          roomId: _roomCodeController.text.trim().toUpperCase(),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = _isCreatingRoom ? AppColors.creatorColor : AppColors.guestColor;
+    final themeColor = _isCreatingRoom
+        ? AppColors.creatorColor
+        : AppColors.guestColor;
 
     return CustomScaffold(
       child: BlocListener<GameManagerBloc, GameManagerState>(
@@ -88,7 +95,8 @@ class _MenuScreenState extends State<MenuScreen>
             MyToast.error(context, state.error!);
             context.read<GameManagerBloc>().add(const ClearStatusEvent());
           }
-          if (state.success == 'room_created' || state.success == 'room_joined') {
+          if (state.success == 'room_created' ||
+              state.success == 'room_joined') {
             MyToast.success(
               context,
               state.success == 'room_created'
@@ -96,11 +104,9 @@ class _MenuScreenState extends State<MenuScreen>
                   : "Joined lobby successfully!",
             );
             context.read<GameManagerBloc>().add(const ClearStatusEvent());
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const GameBoard(),
-              ),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => const GameBoard()));
           }
         },
         child: Stack(
@@ -135,7 +141,8 @@ class _MenuScreenState extends State<MenuScreen>
                                     color: AppColors.creatorColor,
                                     shadows: [
                                       Shadow(
-                                        color: AppColors.creatorColor.withValues(alpha: 0.6),
+                                        color: AppColors.creatorColor
+                                            .withValues(alpha: 0.6),
                                         blurRadius: 20,
                                       ),
                                     ],
@@ -149,7 +156,8 @@ class _MenuScreenState extends State<MenuScreen>
                                     color: AppColors.indigoAccent,
                                     shadows: [
                                       Shadow(
-                                        color: AppColors.indigoAccent.withValues(alpha: 0.6),
+                                        color: AppColors.indigoAccent
+                                            .withValues(alpha: 0.6),
                                         blurRadius: 20,
                                       ),
                                     ],
@@ -163,7 +171,9 @@ class _MenuScreenState extends State<MenuScreen>
                                     color: AppColors.greenAccent,
                                     shadows: [
                                       Shadow(
-                                        color: AppColors.greenAccent.withValues(alpha: 0.6),
+                                        color: AppColors.greenAccent.withValues(
+                                          alpha: 0.6,
+                                        ),
                                         blurRadius: 20,
                                       ),
                                     ],
@@ -251,7 +261,10 @@ class _MenuScreenState extends State<MenuScreen>
                     ),
                     const Gap(40),
 
-                    if (kIsWeb) ...[const WebApkDownloadButton(), const Gap(20)],
+                    if (kIsWeb) ...[
+                      const WebApkDownloadButton(),
+                      const Gap(20),
+                    ],
                   ],
                 ),
               ),
@@ -287,7 +300,10 @@ class SlidingToggle extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
       ),
       child: Stack(
         children: [
@@ -332,7 +348,9 @@ class SlidingToggle extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: isCreatingRoom ? AppColors.textPrimary : AppColors.textSecondary,
+                        color: isCreatingRoom
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -348,7 +366,9 @@ class SlidingToggle extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: !isCreatingRoom ? AppColors.textPrimary : AppColors.textSecondary,
+                        color: !isCreatingRoom
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -384,7 +404,10 @@ class MenuTextField extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: activeColor.withValues(alpha: 0.4), width: 1.5),
+        border: Border.all(
+          color: activeColor.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: activeColor.withValues(alpha: 0.06),
@@ -466,7 +489,9 @@ class PlayButton extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      isCreatingRoom ? Icons.add_box_rounded : Icons.login_rounded,
+                      isCreatingRoom
+                          ? Icons.add_box_rounded
+                          : Icons.login_rounded,
                       color: Colors.white,
                     ),
                     const SizedBox(width: 10),
@@ -505,7 +530,7 @@ class _WebApkDownloadButtonState extends State<WebApkDownloadButton> {
       child: GestureDetector(
         onTap: () {
           launchUrlString(
-            "https://github.com/iamankitm05/tic_tac_toe_board_game/releases/latest",
+            "https://github.com/iamankitm05/tic_tac_toe_board_game/releases/download/tic-tac-toe-v1.0.0/Tic-Tac-Toe-V1.0.0",
           );
         },
         child: AnimatedContainer(
@@ -525,7 +550,9 @@ class _WebApkDownloadButtonState extends State<WebApkDownloadButton> {
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.greenAccent.withValues(alpha: _isHovered ? 0.3 : 0.08),
+                color: AppColors.greenAccent.withValues(
+                  alpha: _isHovered ? 0.3 : 0.08,
+                ),
                 blurRadius: 18,
                 spreadRadius: 1,
               ),
