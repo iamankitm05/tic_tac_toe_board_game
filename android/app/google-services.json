@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "508866619487",
+    "project_id": "tictactoeboard",
+    "storage_bucket": "tictactoeboard.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508866619487:android:9c671c8524d4375b5853ea",
+        "android_client_info": {
+          "package_name": "me.ankit.tic_tac_toe_board_game"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBT6iupN5MfWQvr51uJF0lc8jh45M1ff18"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
